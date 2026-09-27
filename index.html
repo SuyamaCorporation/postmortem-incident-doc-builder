@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>インシデント ポストモーテム ドキュメント ビルダー</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-2xl font-bold mb-1 text-red-400">インシデント ポストモーテム ビルダー</h1>
+    <p class="text-gray-400 text-sm mb-6">SRE ポストモーテム + 5-Whys 分析テンプレート</p>
+
+    <div class="space-y-4">
+      <!-- Header section -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">基本情報</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label for="pm-title" class="block text-xs text-gray-400 mb-1">タイトル *</label>
+            <input id="pm-title" type="text" placeholder="例: 本番DBダウン 2026-09-28"
+              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label for="pm-date" class="block text-xs text-gray-400 mb-1">発生日時</label>
+            <input id="pm-date" type="datetime-local"
+              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label for="pm-severity" class="block text-xs text-gray-400 mb-1">深刻度</label>
+            <select id="pm-severity"
+              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500">
+              <option value="SEV1">SEV1 - クリティカル（全サービス停止）</option>
+              <option value="SEV2">SEV2 - 高（主要機能影響）</option>
+              <option value="SEV3">SEV3 - 中（部分的影響）</option>
+              <option value="SEV4">SEV4 - 低（軽微な影響）</option>
+            </select>
+          </div>
+          <div>
+            <label for="pm-duration" class="block text-xs text-gray-400 mb-1">障害継続時間</label>
+            <input id="pm-duration" type="text" placeholder="例: 2時間35分"
+              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+      </section>
+
+      <!-- Impact -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">影響範囲</h2>
+        <label for="pm-impact" class="block text-xs text-gray-400 mb-1">影響したシステム・ユーザー数・ビジネス影響</label>
+        <textarea id="pm-impact" rows="3"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500 resize-y"
+          placeholder="例: 全ユーザー 5,000名がログイン不可。推定売上損失: ¥500,000"></textarea>
+      </section>
+
+      <!-- Timeline -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">タイムライン</h2>
+        <div id="timeline-rows" class="space-y-2 mb-3"></div>
+        <button id="add-timeline-btn"
+          class="bg-gray-700 hover:bg-gray-600 text-sm text-gray-300 px-3 py-1.5 rounded transition-colors"
+          aria-label="タイムラインエントリを追加する">
+          + エントリ追加
+        </button>
+      </section>
+
+      <!-- Root Cause -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">根本原因</h2>
+        <label for="pm-rootcause" class="block text-xs text-gray-400 mb-1">直接的な根本原因</label>
+        <textarea id="pm-rootcause" rows="3"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500 resize-y"
+          placeholder="例: 自動スケーリングの設定ミスにより、トラフィック急増時にインスタンスが追加されなかった"></textarea>
+      </section>
+
+      <!-- 5 Whys -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">5-Whys 分析</h2>
+        <div class="space-y-2" id="whys-section"></div>
+      </section>
+
+      <!-- Action Items -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">再発防止策</h2>
+        <div id="action-rows" class="space-y-2 mb-3"></div>
+        <button id="add-action-btn"
+          class="bg-gray-700 hover:bg-gray-600 text-sm text-gray-300 px-3 py-1.5 rounded transition-colors"
+          aria-label="再発防止策を追加する">
+          + 追加
+        </button>
+      </section>
+
+      <!-- Lessons Learned -->
+      <section class="bg-gray-800 rounded p-4">
+        <h2 class="text-sm font-bold text-red-300 mb-3">学んだこと</h2>
+        <label for="pm-lessons" class="block text-xs text-gray-400 mb-1">今回の障害から学んだ教訓</label>
+        <textarea id="pm-lessons" rows="3"
+          class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500 resize-y"
+          placeholder="例: 設定変更は必ずstaging環境で30分以上検証してからprodに反映する"></textarea>
+      </section>
+
+      <!-- Buttons -->
+      <div class="flex gap-3">
+        <button id="generate-btn"
+          class="bg-red-700 hover:bg-red-600 text-white px-6 py-2 rounded font-medium transition-colors"
+          aria-label="Markdownを生成する">
+          Markdown 生成
+        </button>
+        <button id="save-btn"
+          class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition-colors"
+          aria-label="下書きを保存する">
+          下書き保存
+        </button>
+        <button id="load-btn"
+          class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition-colors"
+          aria-label="保存した下書きを読み込む">
+          読み込み
+        </button>
+      </div>
+
+      <!-- Output -->
+      <div id="output-section" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-bold text-gray-300">Markdown 出力</h2>
+          <button id="copy-btn"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1 rounded transition-colors"
+            aria-label="Markdownをクリップボードにコピーする">
+            コピー
+          </button>
+        </div>
+        <textarea id="markdown-output" rows="20" readonly
+          class="w-full bg-gray-800 border border-gray-600 rounded p-3 text-xs text-green-300 font-mono focus:outline-none resize-y"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LS_KEY = 'postmortem-data';
+
+    // Build 5-Whys section
+    const whysSection = document.getElementById('whys-section');
+    for (let i = 1; i <= 5; i++) {
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-start';
+      const label = document.createElement('label');
+      label.htmlFor = `why-${i}`;
+      label.className = 'text-xs text-yellow-400 font-bold shrink-0 mt-2 w-12';
+      label.textContent = `Why ${i}:`;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = `why-${i}`;
+      input.placeholder = i === 1 ? 'なぜ障害が発生したか？' :
+                          i === 2 ? 'なぜ Why 1 が起きたか？' :
+                          `なぜ Why ${i-1} が起きたか？`;
+      input.className = 'flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-yellow-500';
+      row.appendChild(label);
+      row.appendChild(input);
+      whysSection.appendChild(row);
+    }
+
+    // Timeline
+    let timelineCount = 0;
+    function addTimelineRow(time = '', desc = '') {
+      const idx = ++timelineCount;
+      const container = document.getElementById('timeline-rows');
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-start';
+      row.id = `tl-row-${idx}`;
+
+      const timeLabel = document.createElement('label');
+      timeLabel.htmlFor = `tl-time-${idx}`;
+      timeLabel.className = 'sr-only';
+      timeLabel.textContent = `タイムライン ${idx} 時刻`;
+      const timeInput = document.createElement('input');
+      timeInput.type = 'text';
+      timeInput.id = `tl-time-${idx}`;
+      timeInput.value = time;
+      timeInput.placeholder = 'HH:MM';
+      timeInput.className = 'w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-red-500';
+
+      const descLabel = document.createElement('label');
+      descLabel.htmlFor = `tl-desc-${idx}`;
+      descLabel.className = 'sr-only';
+      descLabel.textContent = `タイムライン ${idx} 内容`;
+      const descInput = document.createElement('input');
+      descInput.type = 'text';
+      descInput.id = `tl-desc-${idx}`;
+      descInput.value = desc;
+      descInput.placeholder = '出来事の説明';
+      descInput.className = 'flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-red-500';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'text-gray-500 hover:text-red-400 text-xs py-1.5 px-1 transition-colors';
+      delBtn.setAttribute('aria-label', 'このエントリを削除する');
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(timeLabel);
+      row.appendChild(timeInput);
+      row.appendChild(descLabel);
+      row.appendChild(descInput);
+      row.appendChild(delBtn);
+      container.appendChild(row);
+    }
+
+    document.getElementById('add-timeline-btn').addEventListener('click', () => addTimelineRow());
+    addTimelineRow('', '障害検知');
+    addTimelineRow('', '調査開始');
+    addTimelineRow('', '原因特定');
+    addTimelineRow('', '復旧完了');
+
+    // Action items
+    let actionCount = 0;
+    function addActionRow(text = '', owner = '', due = '') {
+      const idx = ++actionCount;
+      const container = document.getElementById('action-rows');
+      const row = document.createElement('div');
+      row.className = 'flex gap-2 items-start';
+
+      const textLabel = document.createElement('label');
+      textLabel.htmlFor = `ac-text-${idx}`;
+      textLabel.className = 'sr-only';
+      textLabel.textContent = `再発防止策 ${idx} 内容`;
+      const textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.id = `ac-text-${idx}`;
+      textInput.value = text;
+      textInput.placeholder = '再発防止策の内容';
+      textInput.className = 'flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-red-500';
+
+      const ownerLabel = document.createElement('label');
+      ownerLabel.htmlFor = `ac-owner-${idx}`;
+      ownerLabel.className = 'sr-only';
+      ownerLabel.textContent = `再発防止策 ${idx} 担当者`;
+      const ownerInput = document.createElement('input');
+      ownerInput.type = 'text';
+      ownerInput.id = `ac-owner-${idx}`;
+      ownerInput.value = owner;
+      ownerInput.placeholder = '担当者';
+      ownerInput.className = 'w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-red-500';
+
+      const dueLabel = document.createElement('label');
+      dueLabel.htmlFor = `ac-due-${idx}`;
+      dueLabel.className = 'sr-only';
+      dueLabel.textContent = `再発防止策 ${idx} 期限`;
+      const dueInput = document.createElement('input');
+      dueInput.type = 'date';
+      dueInput.id = `ac-due-${idx}`;
+      dueInput.value = due;
+      dueInput.className = 'w-32 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-red-500';
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'text-gray-500 hover:text-red-400 text-xs py-1.5 px-1 transition-colors';
+      delBtn.setAttribute('aria-label', 'この再発防止策を削除する');
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => row.remove());
+
+      row.appendChild(textLabel);
+      row.appendChild(textInput);
+      row.appendChild(ownerLabel);
+      row.appendChild(ownerInput);
+      row.appendChild(dueLabel);
+      row.appendChild(dueInput);
+      row.appendChild(delBtn);
+      container.appendChild(row);
+    }
+
+    document.getElementById('add-action-btn').addEventListener('click', () => addActionRow());
+    addActionRow();
+
+    function collectData() {
+      const timeline = [];
+      document.querySelectorAll('#timeline-rows > div').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs[0] && inputs[1]) timeline.push({ time: inputs[0].value, desc: inputs[1].value });
+      });
+      const actions = [];
+      document.querySelectorAll('#action-rows > div').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs[0]) actions.push({ text: inputs[0].value, owner: inputs[1]?.value || '', due: inputs[2]?.value || '' });
+      });
+      const whys = [];
+      for (let i = 1; i <= 5; i++) {
+        whys.push(document.getElementById(`why-${i}`)?.value || '');
+      }
+      return {
+        title: document.getElementById('pm-title').value,
+        date: document.getElementById('pm-date').value,
+        severity: document.getElementById('pm-severity').value,
+        duration: document.getElementById('pm-duration').value,
+        impact: document.getElementById('pm-impact').value,
+        rootcause: document.getElementById('pm-rootcause').value,
+        whys, timeline, actions,
+        lessons: document.getElementById('pm-lessons').value
+      };
+    }
+
+    function generateMarkdown(d) {
+      const sev = d.severity;
+      const tlLines = d.timeline.filter(t => t.desc).map(t => `| ${t.time || 'HH:MM'} | ${t.desc} |`).join('\n');
+      const actionLines = d.actions.filter(a => a.text).map((a, i) =>
+        `- [ ] ${a.text}${a.owner ? ' — 担当: ' + a.owner : ''}${a.due ? ' — 期限: ' + a.due : ''}`
+      ).join('\n');
+      const whyLines = d.whys.map((w, i) => w ? `**Why ${i+1}:** ${w}` : `**Why ${i+1}:** -`).join('\n\n');
+
+      return `# ポストモーテム: ${d.title || '未設定'}
+
+**深刻度:** ${sev}
+**発生日時:** ${d.date || '-'}
+**継続時間:** ${d.duration || '-'}
+**作成日:** ${new Date().toLocaleDateString('ja-JP')}
+
+---
+
+## 概要
+
+${d.impact || '-'}
+
+---
+
+## タイムライン
+
+| 時刻 | 出来事 |
+|------|--------|
+${tlLines || '| - | - |'}
+
+---
+
+## 根本原因
+
+${d.rootcause || '-'}
+
+---
+
+## 5-Whys 分析
+
+${whyLines}
+
+---
+
+## 再発防止策
+
+${actionLines || '- 未設定'}
+
+---
+
+## 学んだこと
+
+${d.lessons || '-'}
+
+---
+
+*このドキュメントはポストモーテム ビルダーで生成されました*
+`;
+    }
+
+    document.getElementById('generate-btn').addEventListener('click', () => {
+      const d = collectData();
+      const md = generateMarkdown(d);
+      document.getElementById('markdown-output').value = md;
+      document.getElementById('output-section').classList.remove('hidden');
+      document.getElementById('output-section').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const ta = document.getElementById('markdown-output');
+      navigator.clipboard.writeText(ta.value).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'コピー完了 ✓';
+        setTimeout(() => btn.textContent = 'コピー', 2000);
+      });
+    });
+
+    document.getElementById('save-btn').addEventListener('click', () => {
+      localStorage.setItem(LS_KEY, JSON.stringify(collectData()));
+      alert('下書きを保存しました。');
+    });
+
+    document.getElementById('load-btn').addEventListener('click', () => {
+      const saved = localStorage.getItem(LS_KEY);
+      if (!saved) { alert('保存された下書きがありません。'); return; }
+      try {
+        const d = JSON.parse(saved);
+        document.getElementById('pm-title').value = d.title || '';
+        document.getElementById('pm-date').value = d.date || '';
+        document.getElementById('pm-severity').value = d.severity || 'SEV2';
+        document.getElementById('pm-duration').value = d.duration || '';
+        document.getElementById('pm-impact').value = d.impact || '';
+        document.getElementById('pm-rootcause').value = d.rootcause || '';
+        document.getElementById('pm-lessons').value = d.lessons || '';
+        for (let i = 1; i <= 5; i++) {
+          const el = document.getElementById(`why-${i}`);
+          if (el) el.value = (d.whys || [])[i-1] || '';
+        }
+        // Reload timeline
+        document.getElementById('timeline-rows').textContent = '';
+        timelineCount = 0;
+        (d.timeline || []).forEach(t => addTimelineRow(t.time, t.desc));
+        // Reload actions
+        document.getElementById('action-rows').textContent = '';
+        actionCount = 0;
+        (d.actions || []).forEach(a => addActionRow(a.text, a.owner, a.due));
+        alert('読み込みました。');
+      } catch(e) { alert('読み込みに失敗しました。'); }
+    });
+  </script>
+</body>
+</html>
